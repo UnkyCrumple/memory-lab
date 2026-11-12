@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Memory Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Layout: a pipeline rail on the left (senses to long-term memory), one lab station at a time on the right. */
+  --bg:#F3F8F7; --surface:#FFFFFF; --ink:#2B2D2F; --ink-2:#566063; --line:#D0E0DE;
+  --btn:#0E7C7B; --btn-hover:#0B6665; --accent:#0B6665; --soft:#E3F2F1;
+  --gold:#C9A94E; --gold-soft:#F3EACB; --gold-ink:#6F5A1B;
+  --good:#1B7F4B; --good-soft:#E1F3E8; --bad:#B3402F; --bad-soft:#F8E4E0;
+  --screen:#18292B; --screen-ink:#E8F6F5;
+  --f-display:"Bricolage Grotesque",system-ui,sans-serif;
+  --f-body:"Atkinson Hyperlegible",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#141819; --surface:#1E2324; --ink:#E7EFEE; --ink-2:#A8B6B5; --line:#33403F;
+    --btn:#0E7C7B; --btn-hover:#12908F; --accent:#5CCFCD; --soft:#1C3433;
+    --gold:#D8BC62; --gold-soft:#3A3319; --gold-ink:#E3CD84;
+    --good:#58C98B; --good-soft:#1B3427; --bad:#F08A78; --bad-soft:#3E2220;
+    --screen:#0C1718; --screen-ink:#E8F6F5;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141819; --surface:#1E2324; --ink:#E7EFEE; --ink-2:#A8B6B5; --line:#33403F;
+  --btn:#0E7C7B; --btn-hover:#12908F; --accent:#5CCFCD; --soft:#1C3433;
+  --gold:#D8BC62; --gold-soft:#3A3319; --gold-ink:#E3CD84;
+  --good:#58C98B; --good-soft:#1B3427; --bad:#F08A78; --bad-soft:#3E2220;
+  --screen:#0C1718; --screen-ink:#E8F6F5;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:400 18px/1.55 var(--f-body);-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--f-display);line-height:1.1;text-wrap:balance;margin:0;color:var(--ink)}
+h1{font-size:clamp(48px,9vw,92px);font-weight:800;letter-spacing:-.02em;color:var(--accent)}
+h2{font-size:clamp(30px,4.5vw,44px);font-weight:800}
+h3{font-size:22px;font-weight:700;margin-bottom:8px}
+p{margin:0 0 12px}
+a{color:var(--accent)}
+.muted{color:var(--ink-2)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.eyebrow{font:700 13px var(--f-body);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2);margin:0 0 6px}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+
+.app{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100vh}
+.rail{position:sticky;top:0;align-self:start;height:100vh;padding:28px 20px;border-right:1px solid var(--line);background:var(--surface);overflow:auto}
+.brand{display:block;font:800 24px var(--f-display);color:var(--accent);text-decoration:none;margin-bottom:4px}
+.rail .sub{font-size:14px;color:var(--ink-2);margin-bottom:24px}
+.rail ol{list-style:none;margin:0;padding:0;position:relative}
+.rail ol::before{content:"";position:absolute;left:15px;top:16px;bottom:16px;width:2px;background:var(--line)}
+.rail li a{display:flex;gap:12px;align-items:center;padding:8px 0;color:var(--ink-2);text-decoration:none;font-weight:700;font-size:16px;position:relative}
+.rail .dot{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:var(--surface);border:2px solid var(--line);font:700 14px var(--f-display);z-index:1;flex:none}
+.rail li.done .dot{background:var(--btn);border-color:var(--btn);color:#fff}
+.rail li.current .dot{border-color:var(--gold);box-shadow:0 0 0 4px var(--gold-soft)}
+.rail li.current a{color:var(--ink)}
+.rail .prog{margin-top:24px;font-size:14px;color:var(--ink-2)}
+
+main{padding:40px clamp(16px,5vw,64px) 96px;max-width:1000px;width:100%}
+.hero{padding:12px 0 8px}
+.lede{font-size:21px;max-width:60ch;margin:16px 0 20px}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:12px 0}
+.st-head{display:flex;gap:20px;align-items:flex-end;margin-bottom:20px}
+.num{font:800 clamp(72px,13vw,140px)/.78 var(--f-display);color:var(--accent);opacity:.92;letter-spacing:-.04em}
+.prose{max-width:66ch}
+.panel,.lab{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:24px;margin:20px 0}
+.lab{border-left:6px solid var(--btn)}
+.lab h3 .tag{font:700 12px var(--f-body);letter-spacing:.1em;text-transform:uppercase;background:var(--soft);color:var(--accent);padding:3px 8px;border-radius:6px;margin-right:8px;vertical-align:middle}
+.depth{background:var(--soft);border-radius:14px;padding:20px 24px;margin:20px 0}
+.depth h3{color:var(--accent)}
+.gold-note{border-left:5px solid var(--gold);background:var(--gold-soft);padding:12px 16px;border-radius:0 10px 10px 0;color:var(--ink);margin:16px 0}
+
+.btn{appearance:none;border:2px solid var(--btn);background:var(--btn);color:#fff;font:700 16px var(--f-body);padding:11px 20px;border-radius:10px;cursor:pointer;text-decoration:none;display:inline-block}
+.btn:hover{background:var(--btn-hover);border-color:var(--btn-hover)}
+.btn.ghost{background:transparent;color:var(--accent);border-color:var(--btn)}
+.btn.ghost:hover{background:var(--soft)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+input,textarea,select{font:inherit;background:var(--bg);color:var(--ink);border:2px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
+textarea{min-height:96px;resize:vertical}
+input[type=range]{accent-color:var(--btn)}
+input:focus,textarea:focus,select:focus{border-color:var(--btn);outline:none}
+label{font-weight:700;display:block;margin:8px 0 4px}
+.inline-in{max-width:360px}
+.mono{font-family:var(--f-mono)}
+
+.screen{background:var(--screen);color:var(--screen-ink);border-radius:12px;min-height:200px;display:grid;place-items:center;font:500 22px var(--f-mono);padding:18px;text-align:center;margin:12px 0}
+.screen.big{font-size:clamp(40px,9vw,72px);font-weight:600;letter-spacing:.08em}
+.screen small{display:block;font:400 16px var(--f-body);color:#A9C7C5;margin-top:8px;letter-spacing:0}
+.g{display:grid;grid-template-columns:repeat(4,minmax(0,64px));gap:10px;justify-content:center}
+.g span{height:60px;display:grid;place-items:center;font:600 32px var(--f-mono);border-radius:8px;background:rgba(255,255,255,.07)}
+.g span.cue{outline:3px solid var(--gold);background:rgba(201,169,78,.22)}
+.timer{height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin:10px 0}
+.timer i{display:block;height:100%;width:100%;background:var(--gold)}
+.clock{font:600 20px var(--f-mono);color:var(--gold-ink)}
+.out{margin-top:12px;font-weight:700}
+.big{font:800 52px var(--f-display);color:var(--accent);margin:0}
+
+.opt{display:block;width:100%;text-align:left;margin:8px 0;padding:12px 14px;border:2px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;cursor:pointer}
+.opt:hover{border-color:var(--btn)}
+.opt.right{border-color:var(--good);background:var(--good-soft)}
+.opt.wrong{border-color:var(--bad);background:var(--bad-soft)}
+fieldset.q{border:0;padding:0;margin:0 0 24px}
+fieldset.q legend{font-weight:700;padding:0;margin-bottom:6px}
+.fb{margin:6px 0 0;min-height:1em}
+.fb b.ok{color:var(--good)} .fb b.no{color:var(--bad)}
+
+.tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:2px solid var(--line);margin-top:8px}
+.tab{appearance:none;border:0;background:transparent;color:var(--ink-2);font:700 16px var(--f-body);padding:10px 16px;border-radius:10px 10px 0 0;cursor:pointer}
+.tab[aria-selected="true"]{background:var(--btn);color:#fff}
+
+.map{display:grid;gap:10px;margin:24px 0}
+.map a{display:grid;grid-template-columns:56px 1fr auto;gap:14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 18px;text-decoration:none;color:var(--ink)}
+.map a:hover{border-color:var(--btn)}
+.map .n{font:800 36px var(--f-display);color:var(--accent)}
+.map b{font:700 20px var(--f-display);display:block}
+.map span.d{color:var(--ink-2);font-size:16px}
+.pill{font:700 13px var(--f-body);border-radius:999px;padding:4px 10px;background:var(--soft);color:var(--accent);white-space:nowrap}
+.pill.done{background:var(--btn);color:#fff}
+details{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 18px;margin:10px 0}
+details summary{cursor:pointer;font-weight:700}
+details[open] summary{margin-bottom:8px}
+
+.bar{display:flex;align-items:center;gap:12px;margin:8px 0}
+.bar b{width:150px;flex:none;font-size:16px}
+.bar .tr{flex:1;background:var(--soft);border-radius:6px;height:20px;overflow:hidden}
+.bar .tr i{display:block;height:100%;background:var(--btn);border-radius:6px}
+.bar .tr i.gold{background:var(--gold)}
+.bar em{font-style:normal;font-weight:700;width:52px;text-align:right;font-variant-numeric:tabular-nums}
+
+.tiles{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.tile{min-width:52px;padding:8px 10px;border-radius:10px;border:2px solid var(--line);text-align:center;font:700 22px var(--f-mono);background:var(--bg)}
+.tile small{display:block;font:400 13px var(--f-body);color:var(--ink-2)}
+.tile.ok{border-color:var(--good);background:var(--good-soft)}
+.tile.no{border-color:var(--bad);background:var(--bad-soft)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.chip{appearance:none;width:46px;height:46px;border-radius:10px;border:2px solid var(--line);background:var(--surface);color:var(--ink);font:700 15px var(--f-body);cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--btn);border-color:var(--btn);color:#fff}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:12px 0}
+.mech{text-align:left;background:var(--surface);border:2px solid var(--line);border-radius:12px;padding:16px;cursor:pointer;color:var(--ink);font:inherit}
+.mech[aria-expanded="true"]{border-color:var(--btn);background:var(--soft)}
+.mech b{font:700 19px var(--f-display);display:block;margin-bottom:4px}
+.mech .more{display:none;margin-top:8px;font-size:16px}
+.mech[aria-expanded="true"] .more{display:block}
+.chart{width:100%;height:auto;display:block;color:var(--ink-2)}
+.hm{display:flex;gap:14px;align-items:flex-end;height:150px;margin:12px 0 4px}
+.hm div{flex:1;background:var(--btn);border-radius:8px 8px 0 0;color:#fff;font-weight:700;display:flex;align-items:flex-start;justify-content:center;padding-top:6px;font-size:15px}
+.steps{padding-left:22px}
+.steps li{margin:4px 0}
+.checks label{display:flex;gap:10px;align-items:center;font-weight:400;margin:6px 0}
+.checks input{width:22px;height:22px;flex:none}
+.pager{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:32px}
+.words{columns:2;column-gap:32px;font:600 22px var(--f-mono);margin:12px 0;padding:0;list-style:none}
+.words li{margin:4px 0}
+.card-q{font:700 24px var(--f-display);margin:12px 0 16px}
+
+@media (max-width:860px){
+  .app{grid-template-columns:1fr}
+  .rail{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line);padding:12px 16px}
+  .rail .sub,.rail .prog{display:none}
+  .brand{margin-bottom:8px}
+  .rail ol{display:flex;gap:4px;overflow-x:auto}
+  .rail ol::before{display:none}
+  .rail li a{flex-direction:column;gap:4px;padding:4px 8px;font-size:12px;min-width:66px;text-align:center}
+  .bar b{width:96px}
+  .map a{grid-template-columns:40px 1fr}
+  .map .pill{grid-column:2}
+}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="rail" aria-label="Memory pipeline">
+    <a class="brand" href="#home">Memory Lab</a>
+    <p class="sub">Follow the information from your senses to long-term memory.</p>
+    <ol id="railList"></ol>
+    <p class="prog" id="railProg"></p>
+  </nav>
+  <main id="stage" tabindex="-1"></main>
+</div>
+
+<script>
+"use strict";
+/* ---------- helpers ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const frame = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+const shuffle = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const CONS = "BCDFGHJKLMNPQRSTVWXZ".split("");
+const rint = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+
+let token = 0; /* changes on every route so old timers stop touching the page */
+let state = { done: {} };
+
+/* countdown with a bar and a readout; resolves true at zero, false if the page moved on */
+function countdown(bar, text, secs, t) {
+  return new Promise(res => {
+    const end = Date.now() + secs * 1000;
+    if (bar) { bar.style.transition = "none"; bar.style.width = "100%"; void bar.offsetWidth; bar.style.transition = "width " + secs + "s linear"; bar.style.width = "0%"; }
+    if (text) text.textContent = secs + " s";
+    const iv = setInterval(() => {
+      if (t !== token) { clearInterval(iv); res(false); return; }
+      if (text) text.textContent = Math.max(0, Math.ceil((end - Date.now()) / 1000)) + " s";
+      if (Date.now() >= end) { clearInterval(iv); res(true); }
+    }, 200);
+  });
+}
+function onClickOnce(btn) { return new Promise(r => btn.addEventListener("click", () => r("click"), { once: true })); }
+function onSubmitOnce(form) { return new Promise(r => { const h = e => { e.preventDefault(); form.removeEventListener("submit", h); r(true); }; form.addEventListener("submit", h); }); }
+const letters = s => (String(s).toUpperCase().match(/[A-Z]/g) || []);
+function scoreWords(text, words) {
+  const norm = w => w.replace(/s$/, "");
+  const toks = new Set((String(text).toLowerCase().match(/[a-z]+/g) || []).map(norm));
+  return words.filter(w => toks.has(norm(w))).length;
+}
+function bars(rows, max) {
+  return rows.map(r => `<div class="bar"><b>${esc(r.label)}</b><div class="tr"><i class="${r.gold ? "gold" : ""}" style="width:${Math.round(100 * r.value / max)}%"></i></div><em>${r.value}/${max}</em></div>`).join("");
+}
+
+/* ---------- stations ---------- */
+const STATIONS = [
+  { id: "sensory", n: 1, name: "Sensory memory", short: "Senses", min: 6, d: "Flash a grid of letters and catch what your eyes hold for a split second.", render: renderSensory },
+  { id: "working", n: 2, name: "Working memory", short: "Working", min: 9, d: "Stretch your digit span, chunk a string, and watch a memory fade in 18 seconds.", render: renderWorking },
+  { id: "devices", n: 3, name: "Memory devices", short: "Devices", min: 15, d: "Rote against story, build an acrostic and a memory palace, and plan your spacing.", render: renderDevices },
+  { id: "vault", n: 4, name: "The long-term vault", short: "Vault", min: 9, d: "Sort real memories, meet a famous patient, and try to explain tying a shoe.", render: renderVault },
+  { id: "pressure", n: 5, name: "Memory under pressure", short: "Pressure", min: 8, d: "Slide the stress dial, then test your recall against a countdown.", render: renderPressure },
+  { id: "boss", n: 6, name: "Boss round", short: "Boss", min: 5, d: "Twelve questions across every station.", render: renderBoss },
+];
+const stationName = id => (STATIONS.find(s => s.id === id) || {}).name || id;
+
+function head(n, title, kicker) {
+  return `<header class="st-head"><span class="num" aria-hidden="true">${String(n).padStart(2, "0")}</span><div><p class="eyebrow">${kicker}</p><h2>${title}</h2></div></header>`;
+}
+function pager(id) {
+  const i = STATIONS.findIndex(s => s.id === id);
+  const prev = i > 0 ? STATIONS[i - 1] : null, next = i < STATIONS.length - 1 ? STATIONS[i + 1] : null;
+  return `<div class="pager">${prev ? `<a class="btn ghost" href="#${prev.id}">Back: ${esc(prev.name)}</a>` : `<a class="btn ghost" href="#home">Back to the map</a>`}${next ? `<a class="btn" href="#${next.id}">Next: ${esc(next.name)}</a>` : `<a class="btn" href="#home">Back to the map</a>`}</div>`;
+}
+function markDone(id) { state.done[id] = true; updateRail(); }
+function updateRail(current) {
+  const cur = current || (location.hash || "#home").slice(1);
+  $("#railList").innerHTML = STATIONS.map(s => `<li class="${state.done[s.id] ? "done" : ""} ${cur === s.id ? "current" : ""}"><a href="#${s.id}" ${cur === s.id ? 'aria-current="page"' : ""}><span class="dot">${state.done[s.id] ? "&#10003;" : s.n}</span>${esc(s.short)}</a></li>`).join("");
+  const n = Object.keys(state.done).length;
+  $("#railProg").textContent = n + " of " + STATIONS.length + " stations checked off";
+}
+
+/* ---------- quick check component ---------- */
+function quickCheck(host, qs, opts) {
+  opts = opts || {};
+  const items = qs.map(q => ({ ...q, order: shuffle(q.o.map((_, i) => i)) }));
+  let answered = 0, right = 0; const missed = [];
+  host.innerHTML = `<h3>${esc(opts.title || "Quick check")}</h3>` +
+    items.map((q, i) => `<fieldset class="q" data-i="${i}"><legend>${i + 1}. ${esc(q.q)}</legend>${q.order.map(oi => `<button type="button" class="opt" data-o="${oi}">${esc(q.o[oi])}</button>`).join("")}<p class="fb" aria-live="polite"></p></fieldset>`).join("") +
+    `<div class="qc-end" aria-live="polite"></div>`;
+  host.addEventListener("click", e => {
+    const b = e.target.closest(".opt"); if (!b) return;
+    const fs = b.closest(".q"); if (fs.dataset.done) return;
+    fs.dataset.done = "1";
+    const q = items[+fs.dataset.i], oi = +b.dataset.o, ok = oi === q.a;
+    $$(".opt", fs).forEach(x => { if (+x.dataset.o === q.a) x.classList.add("right"); });
+    if (!ok) b.classList.add("wrong");
+    $(".fb", fs).innerHTML = ok ? `<b class="ok">Yes.</b> ${esc(q.why || "")}` : `<b class="no">Not quite.</b> ${esc(q.why || "")}`;
+    answered++; if (ok) right++; else missed.push(q.s || opts.station);
+    if (answered === items.length) {
+      const end = $(".qc-end", host);
+      if (opts.onDone) opts.onDone({ right, total: items.length, missed, end });
+      else {
+        markDone(opts.station);
+        end.innerHTML = `<p class="out">Station complete: ${right} of ${items.length} correct.</p>`;
+      }
+    }
+  });
+}
+
+/* ---------- home ---------- */
+function renderHome(el) {
+  el.innerHTML = `
+  <section class="hero">
+    <p class="eyebrow">Psychology elective &middot; Memory, round two</p>
+    <h1>Memory Lab</h1>
+    <p class="lede">You have seen the model. Now run it on your own brain. Each station has a short experiment, a deeper look at one idea from the slideshow, and a quick check.</p>
+    <div class="row"><a class="btn" href="#sensory">Start at station 1</a><span class="muted">About 50 minutes in all. Every station also works on its own.</span></div>
+  </section>
+  <section class="map" aria-label="Stations">
+    ${STATIONS.map(s => `<a href="#${s.id}"><span class="n">${String(s.n).padStart(2, "0")}</span><span><b>${esc(s.name)}</b><span class="d">${esc(s.d)}</span></span><span class="pill ${state.done[s.id] ? "done" : ""}">${state.done[s.id] ? "Checked off" : s.min + " min"}</span></a>`).join("")}
+  </section>
+  <details>
+    <summary>For the teacher</summary>
+    <p><b>Running it.</b> Works on a projector for the whole class or on individual devices. Nothing is saved or sent anywhere, and a refresh clears progress.</p>
+    <p><b>Class data.</b> Have students call out scores for three comparisons: whole-grid against cued-row (station 1), rote against story (station 3), and calm against countdown (station 5). Then ask what a fair experiment would need that one trial each does not have: more trials, random order, and more people.</p>
+    <p><b>Beyond the slideshow.</b> Station 1 adds Sperling's partial-report method. Station 2 adds the newer estimate of about four chunks and the 18-second fade test. Station 3 adds the method of loci and a spacing model. Station 4 adds the patient H.M. and the idea that implicit memory also includes priming. Station 5 adds the Yerkes&ndash;Dodson curve and the effect of task difficulty.</p>
+  </details>`;
+}
+
+/* ---------- 1. sensory ---------- */
+function renderSensory(el) {
+  el.innerHTML = head(1, "Sensory memory", "Station 1 &middot; Blink and it is gone") + `
+  <div class="prose"><p>Everything your senses pick up lands here first. Sensory memory holds a huge amount for almost no time: about half a second for sights (<b>iconic</b> memory) and about three to four seconds for sounds (<b>echoic</b> memory). Only what you pay attention to moves on to working memory.</p></div>
+  <div class="depth"><h3>Go deeper: Sperling's letters</h3>
+    <p>In 1960, George Sperling flashed a grid of 12 letters for a fraction of a second. People could report only about four of them. Did they see only four? Sperling's trick was to sound a cue right after the flash that told people which single row to report. If the whole grid was briefly available, they should do well on any row. Try both versions yourself.</p></div>
+  <div class="lab" id="labA">
+    <h3><span class="tag">Test 1</span>Whole report</h3>
+    <p>A 3-by-4 grid of letters appears for a fraction of a second. Then type every letter you saw, in any order.</p>
+    <div class="screen" id="scrA" aria-live="polite">Ready when you are</div>
+    <div class="row"><button class="btn" id="goA">Flash the grid</button></div>
+    <form id="formA" class="row" hidden><label class="sr" for="inA">Letters you saw</label><input id="inA" class="inline-in" autocomplete="off" placeholder="Type the letters you saw"><button class="btn">Check</button></form>
+    <p class="out" id="outA" aria-live="polite"></p>
+  </div>
+  <div class="lab" id="labB">
+    <h3><span class="tag">Test 2</span>Cued row</h3>
+    <p>Same flash, new letters. This time a gold outline appears on one row the instant the letters vanish. Type only the four letters from that row.</p>
+    <div class="screen" id="scrB" aria-live="polite">Ready when you are</div>
+    <div class="row"><button class="btn" id="goB">Flash the grid</button></div>
+    <form id="formB" class="row" hidden><label class="sr" for="inB">Letters from the cued row</label><input id="inB" class="inline-in" autocomplete="off" maxlength="4" placeholder="Four letters from the row"><button class="btn">Check</button></form>
+    <p class="out" id="outB" aria-live="polite"></p>
+  </div>
+  <div class="panel" id="sensRes" hidden></div>
+  <div class="panel"><h3>Echoic memory in real life</h3><p>Someone says something while you are not listening. You say &ldquo;What?&rdquo; and then, before they answer, you work out what they said. That is echoic memory holding the sound for a few seconds, long enough for your attention to catch up. If your attention never returns, the trace fades and the information is gone for good.</p></div>
+  <div class="panel" id="qc"></div>` + pager("sensory");
+
+  const t = token, res = {};
+  const draw = (scr, cueRow, ltrs, ms) => (async () => {
+    scr.innerHTML = `<div class="g">${"<span>+</span>".repeat(12)}</div>`;
+    await sleep(800); if (t !== token) return false;
+    const cells = $$(".g span", scr);
+    cells.forEach((c, i) => c.textContent = ltrs[i]);
+    await frame(); await sleep(ms);
+    cells.forEach(c => c.textContent = "");
+    if (cueRow !== null) cells.forEach((c, i) => { if (Math.floor(i / 4) === cueRow) c.classList.add("cue"); });
+    return t === token;
+  })();
+  function summary() {
+    if (res.a === undefined || res.b === undefined) return;
+    const est = Math.round(res.b / 4 * 12), p = $("#sensRes", el); p.hidden = false;
+    p.innerHTML = `<h3>What your two tests suggest</h3>
+      <p>Whole report: you named <b>${res.a}</b> of 12 letters. Cued row: you got <b>${res.b}</b> of 4, which scales up to about <b>${est}</b> of 12 letters that were available for a moment.</p>
+      <p>${est > res.a ? "The cue helped, just as in Sperling's study: more information was in sensory memory than you could report before it faded." : "This time the cue did not beat your whole report. One try is noisy, so run each test a few more times. Sperling's volunteers averaged about 9 of 12 on the cued version."}</p>`;
+  }
+  $("#goA", el).onclick = async () => {
+    const b = $("#goA", el); b.disabled = true; $("#formA", el).hidden = true; $("#outA", el).textContent = "";
+    const ltrs = shuffle(CONS).slice(0, 12); el._a = ltrs;
+    if (await draw($("#scrA", el), null, ltrs, 200)) { $("#scrA", el).insertAdjacentHTML("beforeend", "<small>Type what you saw</small>"); $("#formA", el).hidden = false; $("#inA", el).value = ""; $("#inA", el).focus(); }
+    b.disabled = false; b.textContent = "Flash a new grid";
+  };
+  $("#formA", el).onsubmit = e => {
+    e.preventDefault(); const seen = new Set(letters($("#inA", el).value));
+    const ok = [...seen].filter(l => el._a.includes(l)).length, wrong = seen.size - ok;
+    res.a = ok; $("#outA", el).textContent = `${ok} correct of 12${wrong ? " (" + wrong + " wrong guess" + (wrong > 1 ? "es" : "") + ")" : ""}. The grid was ${el._a.join(" ")}.`;
+    $("#formA", el).hidden = true; summary();
+  };
+  $("#goB", el).onclick = async () => {
+    const b = $("#goB", el); b.disabled = true; $("#formB", el).hidden = true; $("#outB", el).textContent = "";
+    const ltrs = shuffle(CONS).slice(0, 12), row = rint(0, 2); el._b = ltrs.slice(row * 4, row * 4 + 4);
+    if (await draw($("#scrB", el), row, ltrs, 200)) { $("#formB", el).hidden = false; $("#inB", el).value = ""; $("#inB", el).focus(); }
+    b.disabled = false; b.textContent = "Flash a new grid";
+  };
+  $("#formB", el).onsubmit = e => {
+    e.preventDefault(); const seen = new Set(letters($("#inB", el).value));
+    const ok = el._b.filter(l => seen.has(l)).length; res.b = ok;
+    $("#outB", el).textContent = `${ok} of 4 correct. The row was ${el._b.join(" ")}.`;
+    $("#formB", el).hidden = true; summary();
+  };
+  quickCheck($("#qc", el), QC.sensory, { station: "sensory" });
+}
+
+/* ---------- 2. working ---------- */
+function renderWorking(el) {
+  el.innerHTML = head(2, "Working memory", "Station 2 &middot; The sticky note") + `
+  <div class="prose"><p>Short-term memory holds information for roughly 15 to 30 seconds unless you rehearse it. <b>Working memory</b> is that same space put to work: holding numbers while you add them, or holding a sentence while you decide how to answer. It is small, which is why your brain relies on <b>chunking</b> to stretch it.</p></div>
+  <div class="depth"><h3>Go deeper: how small is it?</h3>
+    <p>George Miller's 1956 paper gave us &ldquo;seven, plus or minus two,&rdquo; the number in your slideshow. Newer research, such as Nelson Cowan's work in 2001, suggests that when you cannot rehearse or regroup, the true limit is closer to <b>four chunks</b>. A chunk is whatever your long-term memory already treats as one unit, so &ldquo;FBI&rdquo; is one chunk but &ldquo;F B I&rdquo; from a stranger's alphabet is three.</p></div>
+  <div class="lab" id="dsLab"></div>
+  <div class="lab" id="chLab"></div>
+  <div class="lab" id="fdLab"></div>
+  <div class="panel" id="qc"></div>` + pager("working");
+  const t = token;
+
+  /* Test 1: digit span */
+  const ds = $("#dsLab", el);
+  ds.innerHTML = `<h3><span class="tag">Test 1</span>Digit span</h3><p>Digits appear one at a time. Type them back in order. Every win adds a digit. Two misses end the run.</p>
+    <div class="screen big" id="dsScr" aria-live="polite">Ready</div>
+    <div class="row"><button class="btn" id="dsGo">Start</button></div>
+    <form id="dsForm" class="row" hidden><label class="sr" for="dsIn">Type the digits</label><input id="dsIn" class="inline-in" inputmode="numeric" autocomplete="off" placeholder="Type the digits"><button class="btn">Check</button></form>
+    <p class="out" id="dsOut" aria-live="polite"></p>`;
+  $("#dsGo", ds).onclick = async () => {
+    const go = $("#dsGo", ds), scr = $("#dsScr", ds), form = $("#dsForm", ds), inp = $("#dsIn", ds), out = $("#dsOut", ds);
+    go.disabled = true; out.textContent = "";
+    let len = 3, misses = 0, best = 0;
+    while (misses < 2) {
+      form.hidden = true;
+      scr.textContent = "Get ready"; if (!await pauseT(900, t)) return;
+      let seq = ""; for (let i = 0; i < len; i++) seq += rint(0, 9);
+      for (const d of seq) { scr.textContent = d; if (!await pauseT(700, t)) return; scr.textContent = ""; if (!await pauseT(250, t)) return; }
+      scr.textContent = "?"; form.hidden = false; inp.value = ""; inp.focus();
+      await onSubmitOnce(form); if (t !== token) return;
+      const ok = inp.value.replace(/\D/g, "") === seq;
+      form.hidden = true;
+      if (ok) { best = len; len++; scr.innerHTML = `Yes<small>${best} digits</small>`; }
+      else { misses++; scr.innerHTML = `Miss<small>It was ${seq}</small>`; }
+      if (!await pauseT(1100, t)) return;
+    }
+    scr.textContent = best; out.textContent = best ? `Your digit span today: ${best}. Most people land between 5 and 9.` : "You did not get the first length, which happens when attention slips. Run it again.";
+    go.disabled = false; go.textContent = "Run it again";
+  };
+
+  /* Test 2: chunking */
+  const ch = $("#chLab", el);
+  ch.innerHTML = `<h3><span class="tag">Test 2</span>Chunk it</h3><p>Two 12-letter strings, six seconds each. Type each one back after it disappears. Spaces do not matter.</p>
+    <div class="screen big" id="chScr" aria-live="polite" style="font-size:clamp(26px,6vw,46px)">Ready</div>
+    <div class="row"><button class="btn" id="chGo">Start round 1</button></div>
+    <form id="chForm" class="row" hidden><label class="sr" for="chIn">Type the letters</label><input id="chIn" class="inline-in" autocomplete="off" placeholder="Type the letters in order"><button class="btn">Check</button></form>
+    <div id="chOut" aria-live="polite"></div>`;
+  $("#chGo", ch).onclick = async () => {
+    const go = $("#chGo", ch), scr = $("#chScr", ch), form = $("#chForm", ch), inp = $("#chIn", ch), out = $("#chOut", ch);
+    go.disabled = true; out.innerHTML = "";
+    const rounds = [{ s: shuffle(CONS).slice(0, 12).join(""), show: null, label: "Random letters" }, { s: "LOLOMGBFFIDK", show: "LOL OMG BFF IDK", label: "Familiar chunks" }];
+    const scores = [];
+    for (let r = 0; r < 2; r++) {
+      const R = rounds[r]; form.hidden = true;
+      scr.textContent = "Get ready"; if (!await pauseT(900, t)) return;
+      scr.textContent = R.show || R.s.split("").join(" "); if (!await pauseT(6000, t)) return;
+      scr.textContent = "?"; form.hidden = false; inp.value = ""; inp.focus();
+      await onSubmitOnce(form); if (t !== token) return;
+      const typed = letters(inp.value); let sc = 0; for (let i = 0; i < 12; i++) if (typed[i] === R.s[i]) sc++;
+      scores.push({ label: R.label, value: sc }); form.hidden = true;
+      scr.innerHTML = `${esc(R.show || R.s.split("").join(" "))}<small>You scored ${sc} of 12 (right letter, right place)</small>`;
+      if (r === 0) { await pauseT(1800, t); if (t !== token) return; }
+    }
+    out.innerHTML = bars(scores, 12) + `<p>Same length, very different difficulty. &ldquo;LOL,&rdquo; &ldquo;OMG,&rdquo; &ldquo;BFF&rdquo; and &ldquo;IDK&rdquo; are each already stored in long-term memory, so each takes one slot in working memory instead of three. <b>Chunking is long-term memory lending a hand to working memory.</b></p>`;
+    go.disabled = false; go.textContent = "Run it again";
+  };
+
+  /* Test 3: fade test */
+  const fd = $("#fdLab", el);
+  fd.innerHTML = `<h3><span class="tag">Test 3</span>The 18-second fade</h3><p>In 1959, Lloyd and Margaret Peterson asked people to hold three letters while counting backward, so they could not rehearse. You will do three trials with different waits. Count backward by 3 from the number shown, out loud or in your head, until the timer ends.</p>
+    <div class="screen big" id="fdScr" aria-live="polite" style="font-size:clamp(30px,7vw,56px)">Ready</div>
+    <div class="timer" id="fdTimer" hidden><i></i></div><p class="clock" id="fdClock"></p>
+    <div class="row"><button class="btn" id="fdGo">Start</button></div>
+    <form id="fdForm" class="row" hidden><label class="sr" for="fdIn">Type the three letters</label><input id="fdIn" class="inline-in" autocomplete="off" maxlength="3" placeholder="Three letters"><button class="btn">Check</button></form>
+    <div id="fdOut" aria-live="polite"></div>`;
+  $("#fdGo", fd).onclick = async () => {
+    const go = $("#fdGo", fd), scr = $("#fdScr", fd), form = $("#fdForm", fd), inp = $("#fdIn", fd), tm = $("#fdTimer", fd), clock = $("#fdClock", fd), out = $("#fdOut", fd);
+    go.disabled = true; out.innerHTML = "";
+    const delays = shuffle([3, 9, 18]), got = [];
+    for (const d of delays) {
+      form.hidden = true; scr.textContent = "Get ready"; if (!await pauseT(1000, t)) return;
+      const tri = shuffle(CONS).slice(0, 3).join(""); scr.textContent = tri.split("").join(" "); if (!await pauseT(2000, t)) return;
+      scr.innerHTML = `${rint(300, 990)}<small>Count backward by 3</small>`; tm.hidden = false;
+      if (!await countdown($("i", tm), clock, d, t)) return;
+      tm.hidden = true; clock.textContent = ""; scr.textContent = "?"; form.hidden = false; inp.value = ""; inp.focus();
+      await onSubmitOnce(form); if (t !== token) return;
+      const ok = letters(inp.value).join("") === tri; got.push({ d, ok, tri }); form.hidden = true;
+      scr.innerHTML = ok ? `Kept it<small>${tri}</small>` : `Lost it<small>It was ${tri}</small>`; if (!await pauseT(1200, t)) return;
+    }
+    got.sort((a, b) => a.d - b.d);
+    out.innerHTML = `<div class="tiles">${got.map(g => `<div class="tile ${g.ok ? "ok" : "no"}">${g.d} s<small>${g.ok ? "kept" : "lost"}</small></div>`).join("")}</div>
+      <p>The Petersons found recall dropped to under 10 percent after 18 seconds of counting. Short-term memory is not just small. It is <b>fragile</b>, and without rehearsal it fades fast. Three letters is also an easy test, so even a keeper here does not mean the trace was safe.</p>`;
+    scr.textContent = "Done"; go.disabled = false; go.textContent = "Run it again";
+  };
+  quickCheck($("#qc", el), QC.working, { station: "working" });
+}
+async function pauseT(ms, t) { await sleep(ms); return t === token; }
+
+/* ---------- 3. devices ---------- */
+const WORD_LISTS = [
+  ["lantern", "penguin", "scissors", "volcano", "pillow", "trumpet", "cactus", "ladder", "mirror", "sandwich"],
+  ["anchor", "giraffe", "pencil", "glacier", "blanket", "violin", "pumpkin", "bicycle", "window", "pretzel"],
+  ["compass", "walrus", "kettle", "tornado", "helmet", "banjo", "pickle", "tractor", "curtain", "waffle"],
+  ["rocket", "lizard", "spatula", "avalanche", "sweater", "drum", "melon", "wagon", "carpet", "cookie"],
+];
+function renderDevices(el) {
+  el.innerHTML = head(3, "Memory devices", "Station 3 &middot; Field-tested") + `
+  <div class="prose"><p>Your slideshow named four ways to push information from working memory into long-term memory: <b>rehearse</b>, <b>connect</b>, <b>chunk</b>, and <b>space</b>. A <b>mnemonic</b> is any trick that builds extra connections. Four labs follow. Test the one that interests you most, then compare notes with a neighbor.</p></div>
+  <div class="tabs" role="tablist" aria-label="Memory device labs">
+    <button class="tab" role="tab" id="t-duel" aria-selected="true" data-p="duel">Device duel</button>
+    <button class="tab" role="tab" id="t-acro" aria-selected="false" data-p="acro">Acrostic forge</button>
+    <button class="tab" role="tab" id="t-palace" aria-selected="false" data-p="palace">Memory palace</button>
+    <button class="tab" role="tab" id="t-space" aria-selected="false" data-p="space">Spacing planner</button>
+  </div>
+  <div class="panel" id="devPanel" role="tabpanel"></div>
+  <div class="panel" id="qc"></div>` + pager("devices");
+  const panels = { duel: devDuel, acro: devAcro, palace: devPalace, space: devSpace };
+  const show = p => {
+    ++token; /* stop any running lab */
+    $$(".tab", el).forEach(b => b.setAttribute("aria-selected", b.dataset.p === p ? "true" : "false"));
+    $("#devPanel", el).setAttribute("aria-labelledby", "t-" + p);
+    panels[p]($("#devPanel", el), token);
+  };
+  $$(".tab", el).forEach(b => b.onclick = () => show(b.dataset.p));
+  show("duel");
+  quickCheck($("#qc", el), QC.devices, { station: "devices" });
+}
+
+/* Device duel: rote vs story */
+function devDuel(host, t) {
+  host.innerHTML = `<h3>Device duel: rote against story</h3>
+    <p>You will learn two lists of 10 words. One list you only repeat in your head. The other you link into a ridiculous story. After a short distraction you will try to recall both. Which wins?</p>
+    <div class="gold-note">Rules for the repeat list: no writing, no pictures, no stories. For the story list: make the words happen in order, and make the scene strange.</div>
+    <div class="row"><button class="btn" id="duelGo">Start the duel</button></div><div id="duelStage"></div>`;
+  $("#duelGo", host).onclick = async () => {
+    $("#duelGo", host).hidden = true;
+    const st = $("#duelStage", host), pool = shuffle(WORD_LISTS), roteL = pool[0], storyL = pool[1];
+    const listHTML = L => `<ul class="words">${L.map(w => `<li>${w}</li>`).join("")}</ul>`;
+    /* phase 1 */
+    st.innerHTML = `<h3>List 1: repeat only</h3>${listHTML(roteL)}<div class="timer"><i id="b1"></i></div><span class="clock" id="c1"></span><div class="row"><button class="btn ghost" id="skip1">I have repeated it enough</button></div>`;
+    await Promise.race([countdown($("#b1", st), $("#c1", st), 40, t), onClickOnce($("#skip1", st))]); if (t !== token) return;
+    /* phase 2 */
+    st.innerHTML = `<h3>List 2: build a story</h3>${listHTML(storyL)}<label for="story">Write your story. Use the words in order.</label><textarea id="story" placeholder="A ${storyL[0]} lands on a ${storyL[1]}..."></textarea><div class="timer"><i id="b2"></i></div><span class="clock" id="c2"></span><div class="row"><button class="btn ghost" id="skip2">My story is done</button></div>`;
+    $("#story", st).focus();
+    await Promise.race([countdown($("#b2", st), $("#c2", st), 75, t), onClickOnce($("#skip2", st))]); if (t !== token) return;
+    /* phase 3: distractor */
+    const probs = Array.from({ length: 6 }, () => [rint(21, 69), rint(21, 69)]);
+    let pi = 0;
+    st.innerHTML = `<h3>Distraction round</h3><p>Answer these six sums. They keep your working memory busy.</p><form id="mf"><label for="mi" id="ml"></label><input id="mi" class="inline-in" inputmode="numeric" autocomplete="off"><div class="row"><button class="btn">Next</button></div></form>`;
+    const mf = $("#mf", st), ml = $("#ml", st), mi = $("#mi", st);
+    const nextProb = () => { ml.textContent = `${pi + 1} of 6:  ${probs[pi][0]} + ${probs[pi][1]} =`; mi.value = ""; mi.focus(); };
+    nextProb();
+    while (pi < probs.length) { await onSubmitOnce(mf); if (t !== token) return; pi++; if (pi < probs.length) nextProb(); }
+    /* phase 4: recall */
+    st.innerHTML = `<h3>Recall</h3><p>Type every word you remember from each list, in any order.</p>
+      <label for="r1">List 1 (the one you repeated)</label><textarea id="r1"></textarea>
+      <label for="r2">List 2 (the one you turned into a story)</label><textarea id="r2"></textarea>
+      <div class="row"><button class="btn" id="score">Score the duel</button></div>`;
+    await onClickOnce($("#score", st)); if (t !== token) return;
+    const s1 = scoreWords($("#r1", st).value, roteL), s2 = scoreWords($("#r2", st).value, storyL);
+    const verdict = s2 > s1 ? "The story list won. Linking words into a scene gave each one more paths back to it." : s1 > s2 ? "Repeating won this time, which can happen after a short delay. Try the duel again with the delay stretched to a day and see which list survives." : "A tie. One trial is a small sample, so try again with new lists.";
+    st.innerHTML = `<h3>Result</h3>${bars([{ label: "Repeat only", value: s1 }, { label: "Story", value: s2, gold: true }], 10)}<p>${verdict}</p>
+      <p class="muted">Why stories help: they use <b>elaboration</b> (adding meaning) and <b>dual coding</b> (words plus a mental picture). Repetition keeps information alive in working memory, but it adds few new links to long-term memory. Rehearsal still has a job, especially for facts with no story to attach.</p>
+      <div class="row"><button class="btn" id="again">Run another duel</button></div>`;
+    $("#again", st).onclick = () => devDuel(host, t);
+  };
+}
+
+/* Acrostic forge */
+const ACRO_SETS = {
+  strategies: { label: "Four encoding strategies", items: ["Rehearse", "Connect", "Chunk", "Space"] },
+  systems: { label: "Three memory systems", items: ["Sensory", "Short-term", "Long-term"] },
+  ltm: { label: "Long-term memory types", items: ["Episodic", "Semantic", "Procedural"] },
+  stress: { label: "How stress hurts memory", items: ["Worry fills working memory", "Attention narrows", "Retrieval gets blocked", "Encoding suffers"] },
+  custom: { label: "Your own list", items: [] },
+};
+function devAcro(host, t) {
+  host.innerHTML = `<h3>Acrostic forge</h3>
+    <p>An <b>acronym</b> squeezes first letters into a word, like ROY G. BIV or HOMES for the Great Lakes. An <b>acrostic</b> turns them into a sentence, like &ldquo;Please Excuse My Dear Aunt Sally&rdquo; for the order of operations. Pick a list and forge one.</p>
+    <label for="aset">List</label>
+    <select id="aset" class="inline-in">${Object.entries(ACRO_SETS).map(([k, v]) => `<option value="${k}">${esc(v.label)}</option>`).join("")}</select>
+    <div id="customBox" hidden><label for="custom">Items, separated by commas</label><input id="custom" placeholder="Mars, Venus, Earth"></div>
+    <div class="tiles" id="atiles" aria-label="First letters"></div>
+    <div class="row"><button class="btn ghost" id="mAcrostic" aria-pressed="true">Acrostic</button><button class="btn ghost" id="mAcronym" aria-pressed="false">Acronym</button></div>
+    <label for="aIn" id="aLabel">Your sentence</label><input id="aIn" autocomplete="off" placeholder="One word per letter, in order">
+    <p class="out" id="aOut" aria-live="polite"></p>`;
+  let mode = "acrostic";
+  const items = () => { const k = $("#aset", host).value; return k === "custom" ? $("#custom", host).value.split(",").map(s => s.trim()).filter(Boolean) : ACRO_SETS[k].items; };
+  function refresh() {
+    const its = items(), ls = its.map(s => (s.match(/[A-Za-z]/) || ["?"])[0].toUpperCase());
+    const words = mode === "acrostic" ? $("#aIn", host).value.trim().split(/\s+/).filter(Boolean) : [];
+    $("#atiles", host).innerHTML = ls.map((l, i) => {
+      let c = ""; if (mode === "acrostic" && words[i]) c = words[i][0].toUpperCase() === l ? "ok" : "no";
+      return `<div class="tile ${c}">${l}<small>${esc(its[i])}</small></div>`;
+    }).join("") || `<p class="muted">Add some items above.</p>`;
+    const out = $("#aOut", host), val = $("#aIn", host).value.trim();
+    if (!ls.length || !val) { out.textContent = ""; return; }
+    if (mode === "acrostic") {
+      const good = words.length === ls.length && ls.every((l, i) => words[i][0].toUpperCase() === l);
+      out.textContent = good ? "Forged. Say it three times, cover the list, and test yourself tomorrow." : words.length > ls.length ? "Too many words. Use exactly one word per letter." : "Keep going. Green tiles match, red tiles do not.";
+    } else {
+      const a = letters(val).sort().join(""), b = [...ls].sort().join("");
+      out.textContent = a === b ? "Forged. The word uses exactly your letters. Remember what each letter stands for." : "Your word needs exactly the letters in the tiles, in any order. For the stress list, try a word that means what stress does to a sports jersey.";
+    }
+  }
+  const setMode = m => {
+    mode = m; $("#mAcrostic", host).setAttribute("aria-pressed", m === "acrostic"); $("#mAcronym", host).setAttribute("aria-pressed", m === "acronym");
+    $("#mAcrostic", host).style.background = m === "acrostic" ? "var(--soft)" : ""; $("#mAcronym", host).style.background = m === "acronym" ? "var(--soft)" : "";
+    $("#aLabel", host).textContent = m === "acrostic" ? "Your sentence" : "Your word"; $("#aIn", host).placeholder = m === "acrostic" ? "One word per letter, in order" : "A word made from these letters, in any order"; refresh();
+  };
+  $("#aset", host).onchange = () => { $("#customBox", host).hidden = $("#aset", host).value !== "custom"; refresh(); };
+  $("#custom", host).oninput = refresh; $("#aIn", host).oninput = refresh;
+  $("#mAcrostic", host).onclick = () => setMode("acrostic"); $("#mAcronym", host).onclick = () => setMode("acronym");
+  setMode("acrostic");
+}
+
+/* Memory palace */
+const PALACE_ITEMS = [["Sensory memory", "under 1 second", "sensory"], ["Short-term memory", "15 to 30 seconds", "short"], ["Long-term memory", "lasts a lifetime", "long"], ["Episodic memory", "your life events", "episodic"], ["Semantic memory", "facts you know", "semantic"], ["Procedural memory", "skills you just do", "procedural"]];
+function devPalace(host, t) {
+  host.innerHTML = `<h3>Memory palace</h3>
+    <p>The <b>method of loci</b> goes back to ancient Greece and is still used by memory champions. You walk a route you know by heart and leave one vivid image at each stop. To recall, you walk the route again. Here you will store six memory terms from your slideshow.</p>
+    <div id="pStage"></div>`;
+  const st = $("#pStage", host);
+  const defaults = ["Front door", "Hallway", "Kitchen table", "Couch", "Bedroom door", "Bathroom mirror"];
+  function step1() {
+    st.innerHTML = `<h4 style="margin:0 0 8px;font:700 18px var(--f-display)">Step 1. Name six stops on a route you know</h4><p class="muted">Your home, your walk to school, or the school hallway. Keep them in the order you would pass them.</p>
+      ${defaults.map((d, i) => `<label for="s${i}">Stop ${i + 1}</label><input id="s${i}" class="inline-in" autocomplete="off" placeholder="${esc(d)}">`).join("")}
+      <div class="row"><button class="btn" id="p1">Next: place the images</button><button class="btn ghost" id="pEx">Use an example route</button></div>`;
+    $("#pEx", st).onclick = () => defaults.forEach((d, i) => $("#s" + i, st).value = d);
+    $("#p1", st).onclick = () => { const stops = defaults.map((d, i) => $("#s" + i, st).value.trim() || d); step2(stops); };
+  }
+  function step2(stops) {
+    st.innerHTML = `<h4 style="margin:0 0 8px;font:700 18px var(--f-display)">Step 2. Put a strange image at each stop</h4><p class="muted">Make it big, moving, and a little gross or silly. For example, a gigantic stopwatch ticking furiously on the front door for sensory memory.</p>
+      ${stops.map((s, i) => `<label for="im${i}">${esc(s)}: ${esc(PALACE_ITEMS[i][0])} (${esc(PALACE_ITEMS[i][1])})</label><input id="im${i}" autocomplete="off" placeholder="What do you see happening at this stop?">`).join("")}
+      <div class="row"><button class="btn" id="p2">Lock it in</button></div>`;
+    $("#p2", st).onclick = () => { const imgs = stops.map((s, i) => $("#im" + i, st).value.trim()); step3(stops, imgs); };
+  }
+  async function step3(stops, imgs) {
+    st.innerHTML = `<h4 style="margin:0 0 8px;font:700 18px var(--f-display)">Step 3. Distraction</h4><p>Count backward from 100 by 7s for 20 seconds. Say the numbers out loud.</p><div class="timer"><i id="pb"></i></div><span class="clock" id="pc"></span>`;
+    if (!await countdown($("#pb", st), $("#pc", st), 20, t)) return;
+    st.innerHTML = `<h4 style="margin:0 0 8px;font:700 18px var(--f-display)">Step 4. Walk your palace</h4><p>Walk the route in your head. At each stop, type the memory term you left there.</p>
+      ${stops.map((s, i) => `<label for="w${i}">Stop ${i + 1}: ${esc(s)}</label><input id="w${i}" class="inline-in" autocomplete="off">`).join("")}
+      <div class="row"><button class="btn" id="p4">Check my walk</button></div><div id="pRes" aria-live="polite"></div>`;
+    $("#p4", st).onclick = () => {
+      let sc = 0;
+      const rows = stops.map((s, i) => { const ok = $("#w" + i, st).value.toLowerCase().includes(PALACE_ITEMS[i][2]); if (ok) sc++; return `<div class="tile ${ok ? "ok" : "no"}" style="text-align:left;font:400 16px var(--f-body);margin:6px 0">${esc(s)}: <b>${esc(PALACE_ITEMS[i][0])}</b>${imgs[i] ? `<small>Your image: ${esc(imgs[i])}</small>` : ""}</div>`; }).join("");
+      $("#pRes", st).innerHTML = `<p class="out">${sc} of 6 recalled.</p>${rows}<p class="muted">Memory palaces work because places are already well encoded in long-term memory, and they give every item a fixed address and an order. Try walking the same palace again tomorrow without looking. That is spacing and retrieval practice stacked on top of the palace.</p><div class="row"><button class="btn ghost" id="pAgain">Build a new palace</button></div>`;
+      $("#pAgain", st).onclick = step1;
+    };
+  }
+  step1();
+}
+
+/* Spacing planner */
+function devSpace(host, t) {
+  host.innerHTML = `<h3>Spacing planner</h3>
+    <p>Say you have <b>3 hours</b> of study time for a test on <b>day 14</b>. Tap the days you will study. Your three hours are split evenly across the days you pick. The curve shows a simple forgetting model: each study session resets memory to 100 percent, and sessions on separate days make the memory fade more slowly.</p>
+    <div class="row"><button class="btn ghost" id="pCram">Cram the night before</button><button class="btn ghost" id="pSpaced">Spread it out</button><button class="btn ghost" id="pClear">Clear</button></div>
+    <div class="chips" id="chips" role="group" aria-label="Study days">${Array.from({ length: 14 }, (_, d) => `<button class="chip" aria-pressed="false" data-d="${d}" aria-label="Day ${d}">${d}</button>`).join("")}</div>
+    <p class="out" id="spInfo" aria-live="polite"></p>
+    <svg class="chart" id="spChart" viewBox="0 0 660 290" role="img" aria-label="Forgetting curve for your study plan"></svg>
+    <div id="spRes"></div>
+    <p class="muted">An illustration built on the shape of Ebbinghaus's forgetting curve. The constants are made up for the demo, so treat the percentages as a picture of the idea, not a measurement of you.</p>`;
+  let days = new Set([13]);
+  const ret = (t0, ds) => {
+    const past = ds.filter(d => d <= t0); if (!past.length) return null;
+    const S = Math.min(1.5 * Math.pow(2.2, past.length - 1), 40);
+    return Math.exp(-(t0 - Math.max(...past)) / S);
+  };
+  const X = d => 44 + d * 19.2, Y = r => 240 - r * 220;
+  function draw() {
+    const ds = [...days].sort((a, b) => a - b);
+    $$(".chip", host).forEach(c => c.setAttribute("aria-pressed", days.has(+c.dataset.d)));
+    $("#spInfo", host).textContent = ds.length ? `${ds.length} session${ds.length > 1 ? "s" : ""} of about ${Math.round(180 / ds.length)} minutes each.` : "Pick at least one day.";
+    let pts = [];
+    for (let d = 0; d <= 30; d += 0.25) { const r = ret(d, ds); if (r !== null) pts.push(`${X(d).toFixed(1)},${Y(r).toFixed(1)}`); }
+    const grid = [0, .25, .5, .75, 1].map(v => `<line x1="44" x2="620" y1="${Y(v)}" y2="${Y(v)}" stroke="currentColor" opacity=".2"/><text x="36" y="${Y(v) + 4}" text-anchor="end" font-size="12" fill="currentColor">${Math.round(v * 100)}%</text>`).join("");
+    const xt = [0, 5, 10, 15, 20, 25, 30].map(d => `<text x="${X(d)}" y="262" text-anchor="middle" font-size="12" fill="currentColor">${d}</text>`).join("");
+    const dots = ds.map(d => `<circle cx="${X(d)}" cy="${Y(1)}" r="5" fill="var(--gold)" stroke="var(--ink)" stroke-width="1"/>`).join("");
+    $("#spChart", host).innerHTML = `${grid}${xt}<line x1="${X(14)}" x2="${X(14)}" y1="14" y2="240" stroke="var(--gold)" stroke-width="2" stroke-dasharray="5 4"/><text x="${X(14) + 6}" y="26" font-size="13" font-weight="700" fill="var(--gold-ink)">Test day</text><text x="332" y="282" text-anchor="middle" font-size="12" fill="currentColor">Days</text>${pts.length ? `<polyline points="${pts.join(" ")}" fill="none" stroke="var(--btn)" stroke-width="3" stroke-linejoin="round"/>` : ""}${dots}`;
+    const a = ret(14, ds), b = ret(30, ds);
+    $("#spRes", host).innerHTML = ds.length ? bars([{ label: "On test day", value: Math.round((a || 0) * 100) }, { label: "Day 30", value: Math.round((b || 0) * 100), gold: true }], 100).replace(/\/100/g, "%") : "";
+  }
+  $("#chips", host).onclick = e => {
+    const c = e.target.closest(".chip"); if (!c) return; const d = +c.dataset.d; days.has(d) ? days.delete(d) : days.add(d); draw();
+  };
+  $("#pCram", host).onclick = () => { days = new Set([13]); draw(); };
+  $("#pSpaced", host).onclick = () => { days = new Set([0, 3, 7, 11]); draw(); };
+  $("#pClear", host).onclick = () => { days = new Set(); draw(); };
+  draw();
+}
+
+/* ---------- 4. vault ---------- */
+const SORT = [
+  { t: "Remembering your first day of middle school", a: "Episodic", why: "A personal event from a particular time and place." },
+  { t: "Knowing that Paris is the capital of France", a: "Semantic", why: "A fact. You probably cannot say when you learned it." },
+  { t: "Tying your shoes while talking to a friend", a: "Procedural", why: "A skill that runs on its own." },
+  { t: "Remembering what you ate for breakfast today", a: "Episodic", why: "An event from your own day." },
+  { t: "Knowing that a dolphin is a mammal", a: "Semantic", why: "General knowledge about the world." },
+  { t: "Typing a text without looking at the keys", a: "Procedural", why: "A motor skill you do rather than describe." },
+  { t: "Remembering the day you got your first pet", a: "Episodic", why: "A personal event, with feelings and a setting attached." },
+  { t: "Knowing that 8 times 7 is 56", a: "Semantic", why: "A fact you simply know." },
+  { t: "Riding a bike after years away", a: "Procedural", why: "Skills tend to survive long gaps without practice." },
+  { t: "Remembering the last time your team won a big game", a: "Episodic", why: "A specific event you lived through." },
+  { t: "Knowing the rules of soccer", a: "Semantic", why: "Facts and rules are semantic. The dribbling itself is procedural." },
+  { t: "Dribbling a soccer ball past a defender", a: "Procedural", why: "A skill your body knows better than your words do." },
+];
+function renderVault(el) {
+  el.innerHTML = head(4, "The long-term vault", "Station 4 &middot; What lasts") + `
+  <div class="prose"><p>Long-term memory has no known size limit and can last a lifetime. The slideshow split it into two families. <b>Explicit</b> memories you can consciously recall and describe: <b>episodic</b> (events from your life) and <b>semantic</b> (facts). <b>Implicit</b> memories show up in what you do, not what you can say: <b>procedural</b> skills and habits. Explicit memory is also called <b>declarative</b> memory.</p></div>
+  <div class="lab" id="sortLab"></div>
+  <div class="depth"><h3>Go deeper: the patient who could not remember practicing</h3>
+    <p>Open each exhibit in order.</p>
+    <details><summary>Exhibit A: the surgery</summary><p>In 1953, a young man known to science as <b>H.M.</b> (Henry Molaison) had parts of both temporal lobes removed to treat severe seizures. The seizures improved. His memory did not.</p></details>
+    <details><summary>Exhibit B: the missing days</summary><p>H.M. could talk, reason, and recall his childhood, but he could not form new explicit memories. He could meet the same doctor every day and greet her as a stranger each time. His working memory still functioned, so he could hold a conversation, but nothing moved on to long-term storage.</p></details>
+    <details><summary>Exhibit C: the mirror-tracing test</summary><p>Brenda Milner asked H.M. to trace a star while seeing his hand only in a mirror, a very awkward task. Over three days his errors dropped steadily, just like anyone learning a skill. Each day he insisted he had never seen the task before.</p>
+      <div class="hm" role="img" aria-label="Schematic bar chart: errors fall from day 1 to day 3"><div style="height:100%">Day 1</div><div style="height:62%">Day 2</div><div style="height:30%">Day 3</div></div><p class="muted">Schematic of the pattern Milner reported: fewer errors each day.</p>
+      <p><b>What it shows:</b> explicit and implicit memory depend on different systems. H.M.'s damage took out his ability to form new explicit memories but spared procedural learning. Implicit memory also includes <b>priming</b>, where seeing a word makes related words easier to recognize without you noticing.</p></details></div>
+  <div class="lab" id="shoeLab"><h3><span class="tag">Try it</span>Explain it with words only</h3>
+    <p>Write instructions for tying a shoe, as if the reader had never seen one. No gestures.</p>
+    <label for="shoe">Your instructions</label><textarea id="shoe" placeholder="First, take the two laces..."></textarea>
+    <p>Now tick every step you actually included:</p>
+    <div class="checks" id="shoeChecks">${["Cross one lace over the other", "Tuck one lace under and pull it tight", "Make a loop with one lace", "Wrap the other lace around the loop", "Push a bend of that lace through the gap", "Pull both loops to tighten"].map((s, i) => `<label><input type="checkbox" id="sc${i}"> ${s}</label>`).join("")}</div>
+    <div class="row"><button class="btn" id="shoeGo">Count my steps</button></div><p class="out" id="shoeOut" aria-live="polite"></p></div>
+  <div class="panel" id="qc"></div>` + pager("vault");
+  renderSort($("#sortLab", el));
+  $("#shoeGo", el).onclick = () => {
+    const n = $$("#shoeChecks input", el).filter(c => c.checked).length;
+    $("#shoeOut", el).textContent = n === 6 ? "All six. That took real effort, and you probably still left out how tight to pull and how your fingers move." : `You included ${n} of 6. Missing steps are normal. Your hands know the skill, but your words have to rebuild it from scratch. That gap is the mark of an implicit memory.`;
+  };
+  quickCheck($("#qc", el), QC.vault, { station: "vault" });
+}
+function renderSort(host) {
+  const order = shuffle(SORT); let i = 0, score = 0; const missed = [];
+  function show() {
+    if (i >= order.length) {
+      host.innerHTML = `<h3><span class="tag">Sort</span>Sort complete</h3><p class="big">${score} / ${order.length}</p>${missed.length ? `<p>Review these:</p><ul>${missed.map(m => `<li>${esc(m.t)}: <b>${m.a}</b></li>`).join("")}</ul>` : "<p>A perfect sort.</p>"}<div class="row"><button class="btn ghost" id="sortAgain">Sort again</button></div>`;
+      $("#sortAgain", host).onclick = () => renderSort(host); return;
+    }
+    const c = order[i];
+    host.innerHTML = `<h3><span class="tag">Sort</span>Which kind of memory? <span class="muted" style="font:400 16px var(--f-body)">${i + 1} of ${order.length}</span></h3>
+      <p class="card-q">${esc(c.t)}</p>
+      <div class="row">${["Episodic", "Semantic", "Procedural"].map(k => `<button class="btn ghost" data-k="${k}">${k}</button>`).join("")}</div><p class="fb" aria-live="polite"></p>`;
+    $$("[data-k]", host).forEach(b => b.onclick = () => {
+      const ok = b.dataset.k === c.a; if (ok) score++; else missed.push(c);
+      $$("[data-k]", host).forEach(x => { x.disabled = true; if (x.dataset.k === c.a) x.style.background = "var(--good-soft)"; });
+      const fam = c.a === "Procedural" ? "Implicit" : "Explicit";
+      $(".fb", host).innerHTML = `<b class="${ok ? "ok" : "no"}">${ok ? "Yes." : "Not quite."}</b> ${esc(c.a)} (${fam}). ${esc(c.why)} <button class="btn" id="nx" style="margin-left:8px">${i + 1 === order.length ? "See score" : "Next"}</button>`;
+      $("#nx", host).onclick = () => { i++; show(); };
+    });
+  }
+  show();
+}
+
+/* ---------- 5. pressure ---------- */
+const MECH = [
+  { h: "Worry fills working memory", b: "Thoughts like &ldquo;I am going to fail&rdquo; take up the same limited space you need for the problem.", e: "Example: reading a question three times because half your mind is on the clock.", f: "Try: write your worries down for ten minutes before a test. Research by Ramirez and Beilock (2011) found this helped anxious students." },
+  { h: "Attention narrows", b: "Under stress you focus on the threat and miss details at the edges.", e: "Example: skipping the word &ldquo;NOT&rdquo; in a question.", f: "Try: underline key words and reread directions once, slowly." },
+  { h: "Retrieval gets blocked", b: "The memory is stored, but stress makes it harder to reach.", e: "Example: the answer pops into your head on the walk home.", f: "Try: a slow breath, then start with what you do know, which often shakes loose the rest." },
+  { h: "Encoding suffers", b: "Cramming while panicked builds weak, thin memories to begin with.", e: "Example: reading notes at 11 p.m. and remembering almost none of it.", f: "Try: study in short, calm sessions spread over several days." },
+];
+const PW = [["river", "candle", "jacket", "marble", "garden", "whistle", "planet", "button"], ["carpet", "dolphin", "magnet", "basket", "thunder", "ribbon", "castle", "pepper"]];
+function renderPressure(el) {
+  el.innerHTML = head(5, "Memory under pressure", "Station 5 &middot; The stress dial") + `
+  <div class="prose"><p>A little pressure helps you focus. Too much hurts. Psychologists have described this pattern since 1908 as the <b>Yerkes&ndash;Dodson law</b>, and it looks like an upside-down U.</p></div>
+  <div class="lab"><h3><span class="tag">Dial</span>Find the sweet spot</h3>
+    <div class="row"><button class="btn ghost" id="easy" aria-pressed="true">Easy task (copying a list)</button><button class="btn ghost" id="hard" aria-pressed="false">Hard task (solving a new problem)</button></div>
+    <svg class="chart" id="uChart" viewBox="0 0 600 290" role="img" aria-label="Performance against pressure, an upside-down U"></svg>
+    <label for="dial">Pressure level</label><input id="dial" type="range" min="0" max="100" value="20" style="padding:0;border:0;background:transparent">
+    <p class="out" id="dialOut" aria-live="polite"></p>
+    <div class="depth" style="margin:12px 0 0"><p style="margin:0"><b>Go deeper:</b> the peak moves. Hard or new tasks peak at <i>lower</i> pressure, because they already demand most of your working memory. Easy, well-practiced tasks tolerate more.</p></div></div>
+  <div class="panel"><h3>Four ways stress hurts memory</h3><p>Tap each card for an example and a way to push back.</p>
+    <div class="cards">${MECH.map((m, i) => `<button class="mech" aria-expanded="false" data-i="${i}"><b>${m.h}</b>${m.b}<span class="more"><i>${m.e}</i><br><br>${m.f}</span></button>`).join("")}</div></div>
+  <div class="lab" id="mini"></div>
+  <div class="panel" id="qc"></div>` + pager("pressure");
+  /* dial */
+  const t = token; let peak = 65;
+  const X = x => 40 + x * 5.4, Y = p => 250 - p * 2.3, perf = (x, pk) => 18 + 82 * Math.exp(-Math.pow((x - pk) / 28, 2));
+  function drawU() {
+    const x = +$("#dial", el).value, pts = []; for (let i = 0; i <= 100; i += 2) pts.push(`${X(i).toFixed(1)},${Y(perf(i, peak)).toFixed(1)}`);
+    const p = perf(x, peak);
+    $("#uChart", el).innerHTML = `<line x1="40" x2="580" y1="250" y2="250" stroke="currentColor" opacity=".4"/><line x1="40" x2="40" y1="14" y2="250" stroke="currentColor" opacity=".4"/>
+      <rect x="${X(peak - 12)}" y="14" width="${X(peak + 12) - X(peak - 12)}" height="236" fill="var(--gold)" opacity=".16"/>
+      <text x="${X(peak)}" y="240" text-anchor="middle" font-size="13" font-weight="700" fill="var(--gold-ink)">Sweet spot</text>
+      <polyline points="${pts.join(" ")}" fill="none" stroke="var(--btn)" stroke-width="4" stroke-linejoin="round"/>
+      <circle cx="${X(x)}" cy="${Y(p)}" r="9" fill="var(--gold)" stroke="var(--ink)" stroke-width="2"/>
+      <text x="310" y="282" text-anchor="middle" font-size="13" fill="currentColor">Pressure, low to high</text>
+      <text x="14" y="140" font-size="13" fill="currentColor" transform="rotate(-90 14 140)" text-anchor="middle">Performance</text>`;
+    $("#dialOut", el).textContent = Math.abs(x - peak) <= 12 ? "Sweet spot. You are alert and focused, and both encoding and retrieval work well." : x < peak ? "Too little pressure. Attention drifts and you do not bother to encode carefully." : "Too much pressure. Worry and a narrow focus crowd working memory and block retrieval.";
+  }
+  $("#dial", el).oninput = drawU;
+  const setTask = hard => { peak = hard ? 35 : 65; $("#easy", el).style.background = hard ? "" : "var(--soft)"; $("#hard", el).style.background = hard ? "var(--soft)" : ""; $("#easy", el).setAttribute("aria-pressed", !hard); $("#hard", el).setAttribute("aria-pressed", hard); drawU(); };
+  $("#easy", el).onclick = () => setTask(false); $("#hard", el).onclick = () => setTask(true); setTask(false);
+  $$(".mech", el).forEach(b => b.onclick = () => b.setAttribute("aria-expanded", b.getAttribute("aria-expanded") === "true" ? "false" : "true"));
+  /* mini test */
+  const mini = $("#mini", el);
+  mini.innerHTML = `<h3><span class="tag">Test</span>Calm against countdown</h3><p>Two rounds, two lists of eight words. Study for 20 seconds, then recall. Round 2 adds a hard countdown and a high-stakes feeling. Imagine this score counts for a big part of your grade.</p>
+    <div class="row"><button class="btn" id="mGo">Start</button></div><div id="mStage"></div>`;
+  $("#mGo", mini).onclick = async () => {
+    $("#mGo", mini).hidden = true; const st = $("#mStage", mini), lists = shuffle(PW), res = [];
+    for (let r = 0; r < 2; r++) {
+      const L = lists[r], hot = r === 1;
+      st.innerHTML = `<h3>Round ${r + 1}: ${hot ? "high stakes" : "calm"}</h3><p>Study these eight words.</p><ul class="words">${L.map(w => `<li>${w}</li>`).join("")}</ul><div class="timer"><i id="mb"></i></div><span class="clock" id="mc"></span>`;
+      if (!await countdown($("#mb", st), $("#mc", st), 20, t)) return;
+      st.innerHTML = `<h3>Recall</h3>${hot ? `<div class="gold-note"><b>Beat the clock.</b> 25 seconds. This round counts double.</div><div class="timer"><i id="rb"></i></div><span class="clock" id="rc" style="font-size:36px"></span>` : `<p>Take your time. Type every word you remember.</p>`}
+        <label for="rec">Words you remember</label><textarea id="rec"></textarea><div class="row"><button class="btn" id="rdone">Done</button></div>`;
+      $("#rec", st).focus();
+      if (hot) await Promise.race([countdown($("#rb", st), $("#rc", st), 25, t), onClickOnce($("#rdone", st))]); else await onClickOnce($("#rdone", st));
+      if (t !== token) return; res.push({ label: hot ? "Countdown" : "Calm", value: scoreWords($("#rec", st).value, L), gold: hot });
+    }
+    const c = res.find(x => x.label === "Calm").value, h = res.find(x => x.label === "Countdown").value;
+    st.innerHTML = `<h3>Result</h3>${bars(res, 8)}<p>${h < c ? "The countdown cost you words. Pressure can crowd working memory and narrow attention." : h > c ? "You did better under the countdown. That fits the left side of the curve: moderate pressure can sharpen focus on an easy task." : "A tie. For eight easy words, many people do not feel much of a squeeze."}</p>
+      <p class="muted">One person, one trial each, and different word lists is not an experiment. A fair test would use many people, many trials, and random order.</p><div class="row"><button class="btn ghost" id="mAgain">Run it again</button></div>`;
+    $("#mAgain", st).onclick = () => renderPressure(el);
+  };
+  quickCheck($("#qc", el), QC.pressure, { station: "pressure" });
+}
+
+/* ---------- 6. boss ---------- */
+function renderBoss(el) {
+  el.innerHTML = head(6, "Boss round", "Station 6 &middot; Everything at once") + `
+  <div class="prose"><p>Twelve questions, one from each corner of the unit. You will see the answer and the reason after each one, then a list of stations to revisit.</p></div>
+  <div class="panel" id="qc"></div>` + pager("boss");
+  quickCheck($("#qc", el), QC.boss, {
+    title: "Boss round", station: "boss",
+    onDone: ({ right, total, missed, end }) => {
+      markDone("boss");
+      const stations = [...new Set(missed)].filter(Boolean);
+      const grade = right >= 11 ? "Memory master" : right >= 8 ? "Solid" : "Worth another lap";
+      end.innerHTML = `<p class="big">${right} / ${total}</p><p class="out">${grade}.</p>` + (stations.length ? `<p>Revisit: ${stations.map(s => `<a href="#${s}">${esc(stationName(s))}</a>`).join(", ")}.</p>` : `<p>Nothing to revisit. Test yourself again in a few days, because that is how this stays put.</p>`) + `<div class="row"><button class="btn ghost" id="bossAgain">Take it again</button></div>`;
+      $("#bossAgain", end).onclick = () => renderBoss(el);
+    },
+  });
+}
+
+/* ---------- question banks ---------- */
+const QC = {
+  sensory: [
+    { q: "Two seconds after a friend stops talking, you can still replay their last few words. Which memory is that?", o: ["Echoic memory", "Iconic memory", "Procedural memory", "Semantic memory"], a: 0, why: "Echoic memory is the brief trace of sound, lasting about three to four seconds." },
+    { q: "In Sperling's cued-row test, people beat what their whole-grid score predicted. What does that show?", o: ["Almost all the letters were available for an instant, then faded before they could be reported", "The cue moved the letters into long-term memory", "The letters stayed on the screen longer when cued", "People were guessing"], a: 0, why: "The cue let them report from the grid before the trace faded." },
+    { q: "What decides whether something in sensory memory moves on?", o: ["Attention", "Volume", "Your age", "Whether it is a fact"], a: 0, why: "Attention is the gateway. What you ignore fades." },
+  ],
+  working: [
+    { q: "Which description fits working memory best?", o: ["A small mental workspace that holds and uses a few items briefly", "A vault that stores everything you know", "A one-second echo of what you just saw", "The memory for skills like riding a bike"], a: 0, why: "Working memory is where you hold and use information right now." },
+    { q: "Why is LOL OMG BFF IDK easier than 12 random letters?", o: ["Each chunk matches something already stored in long-term memory", "It is shorter", "Capital letters are easier", "Working memory is bigger for slang"], a: 0, why: "Four familiar chunks take four slots instead of twelve." },
+    { q: "You need to hold 8015551234 for a minute. What is the best move?", o: ["Chunk it as 801-555-1234", "Read it faster", "Think about something else", "Memorize one digit at a time"], a: 0, why: "Three chunks fit working memory far better than ten digits." },
+  ],
+  devices: [
+    { q: "Why does a silly story usually beat repeating words over and over?", o: ["It ties items to meaning and pictures, so there are more ways to find them later", "Repeating never works", "Stories are shorter than lists", "Stories use sensory memory"], a: 0, why: "Elaboration and dual coding build extra retrieval paths." },
+    { q: "You have 3 hours to study for a test in two weeks. Which plan should last longest?", o: ["Four 45-minute sessions spread across the two weeks", "One 3-hour session the night before", "Three hours the morning of the test", "Three hours right after the first class"], a: 0, why: "Spaced sessions slow forgetting more than one massed session." },
+    { q: "Which device ties a list of unrelated items to places you already know?", o: ["Memory palace", "Acronym", "Chunking", "Rehearsal"], a: 0, why: "The method of loci stores each item at a stop on a familiar route." },
+  ],
+  vault: [
+    { q: "You can ride a bike but cannot fully explain how you keep your balance. Which memory is at work?", o: ["Procedural (implicit)", "Episodic (explicit)", "Semantic (explicit)", "Sensory"], a: 0, why: "Skills are procedural, and procedural memory is implicit." },
+    { q: "Which pair are both kinds of explicit memory?", o: ["Episodic and semantic", "Semantic and procedural", "Episodic and procedural", "Procedural and sensory"], a: 0, why: "Explicit (declarative) memory is episodic plus semantic." },
+    { q: "You know the Sun is a star, but not when you learned that. Which memory?", o: ["Semantic", "Episodic", "Procedural", "Iconic"], a: 0, why: "Facts without a remembered learning moment are semantic." },
+  ],
+  pressure: [
+    { q: "A little pressure helps, too much hurts. What shape does that pattern make?", o: ["An upside-down U", "A line that only goes up", "A line that only goes down", "A flat line"], a: 0, why: "That is the Yerkes-Dodson curve." },
+    { q: "You studied hard, blank on the test, and the answer pops up on the walk home. What most likely happened?", o: ["Stress made a stored memory hard to retrieve", "The memory was never encoded", "Sensory memory faded", "You forgot it permanently"], a: 0, why: "The memory was stored. Stress blocked access." },
+    { q: "Why do worries about failing make a test harder?", o: ["They fill working memory, leaving less room to think", "They erase long-term memory", "They speed up sensory memory", "They make attention wider"], a: 0, why: "Worry competes for the same limited workspace." },
+  ],
+  boss: [
+    { s: "sensory", q: "About how long does a visual image last in iconic memory?", o: ["Under a second", "About 15 seconds", "About a minute", "Hours"], a: 0, why: "Iconic memory fades in roughly half a second." },
+    { s: "sensory", q: "Which memory system takes in nearly everything your senses detect?", o: ["Sensory memory", "Working memory", "Episodic memory", "Procedural memory"], a: 0, why: "It has huge capacity but almost no duration." },
+    { s: "working", q: "Current research suggests working memory holds about how many new chunks?", o: ["About 4 to 7", "Exactly 2", "About 20", "No limit"], a: 0, why: "Miller said about 7. Newer work says closer to 4 when you cannot rehearse or regroup." },
+    { s: "working", q: "In the 18-second fade test, why did people count backward?", o: ["To stop them rehearsing, so short-term memory could be seen fading", "To help them remember", "To test math skill", "To slow sensory memory"], a: 0, why: "Blocking rehearsal exposes how quickly unrehearsed information is lost." },
+    { s: "devices", q: "Encoding is best described as…", o: ["Moving information from short-term into long-term memory", "Pulling information out of long-term memory", "Holding information for a few seconds", "Noticing something for the first time"], a: 0, why: "Retrieval is pulling it back out. Encoding is getting it in." },
+    { s: "devices", q: "Making up 'Please Excuse My Dear Aunt Sally' to remember PEMDAS is an example of…", o: ["An acrostic mnemonic", "Chunking by place", "Procedural memory", "Iconic memory"], a: 0, why: "Each word starts with the letter of an item, in order." },
+    { s: "devices", q: "Same total study time. Which schedule keeps more a month later?", o: ["Spread over several days", "All in one night", "All in one morning", "It makes no difference"], a: 0, why: "Spacing gives memory time to consolidate and slows forgetting." },
+    { s: "vault", q: "Remembering your tenth birthday party is…", o: ["Episodic memory", "Semantic memory", "Procedural memory", "Echoic memory"], a: 0, why: "A personal event with a time and place." },
+    { s: "vault", q: "Why could H.M. improve at mirror tracing without remembering practicing?", o: ["Skill learning uses implicit memory, which his damage spared", "He secretly remembered", "The task was easy", "His sensory memory was strong"], a: 0, why: "Explicit and implicit memory rely on different systems." },
+    { s: "pressure", q: "For a very hard task, the best pressure level is usually…", o: ["Lower than for an easy task", "Higher than for an easy task", "The same as for an easy task", "As high as possible"], a: 0, why: "Hard tasks already use most of your working memory." },
+    { s: "pressure", q: "Which is NOT a way stress hurts memory?", o: ["It permanently deletes long-term memories", "Worry fills working memory", "Attention narrows", "Retrieval gets blocked"], a: 0, why: "Stress interferes with using memories. It does not wipe them out." },
+    { s: "working", q: "Which is the correct path for information?", o: ["Senses, attention, working memory, encoding, long-term memory", "Senses, long-term memory, working memory, attention", "Working memory, senses, encoding, attention", "Long-term memory, senses, attention, encoding"], a: 0, why: "Attention gates sensory input into working memory, and encoding moves it on to long-term memory." },
+  ],
+};
+
+/* ---------- router ---------- */
+function route() {
+  token++;
+  const id = (location.hash || "#home").slice(1), st = STATIONS.find(s => s.id === id), el = $("#stage");
+  el.innerHTML = "";
+  if (st) st.render(el); else renderHome(el);
+  updateRail(st ? id : "home");
+  window.scrollTo(0, 0);
+}
+window.addEventListener("hashchange", route);
+if (window.claude && window.claude.hot && window.claude.hot.snapshot) window.claude.hot.snapshot(() => state);
+const start = d => { if (d && d.done) state = d; route(); };
+if (window.claude && window.claude.hot && window.claude.hot.ready) window.claude.hot.ready(start); else start((window.claude && window.claude.hot && window.claude.hot.data) || {});
+</script>
+</body>
+</html>
